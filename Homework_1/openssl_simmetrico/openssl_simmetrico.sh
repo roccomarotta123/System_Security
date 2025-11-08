@@ -1,4 +1,6 @@
 #!/bin/bash
+# Imposta la variabile LD_LIBRARY_PATH per le librerie OpenSSL legacy
+export LD_LIBRARY_PATH="$(dirname "$0")/legacy_openssl/install/lib"
 # Script per generare chiave e IV, cifrare e decifrare un file con algoritmo selezionabile
 
 
@@ -39,7 +41,7 @@ process_family() {
 
 		# Scegli il binario openssl in base all'algoritmo
 		if [[ "$ALGO" == des-cbc || "$ALGO" == des-ede3-cbc || "$ALGO" == bf-cbc ]]; then
-			OPENSSL_BIN="/opt/local/bin/openssl-1.1"
+			OPENSSL_BIN="$(dirname "$0")/legacy_openssl/install/bin/openssl"
 		else
 			OPENSSL_BIN="openssl"
 		fi

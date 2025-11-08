@@ -2,3 +2,6 @@ aes/
 des/
 camellia/
 blowfish/
+
+legacy_openssl/
+legacy_openssl/**
