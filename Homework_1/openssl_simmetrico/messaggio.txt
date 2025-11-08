@@ -1,0 +1,2 @@
+Questo è un esempio di file di testo da cifrare con OpenSSL.
+Puoi scrivere qui qualsiasi messaggio che vuoi proteggere.
