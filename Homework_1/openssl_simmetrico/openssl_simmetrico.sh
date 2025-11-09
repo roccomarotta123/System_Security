@@ -95,14 +95,20 @@ process_family() {
 			fi
 
 		echo "Cifro messaggio.txt in $DIR/messaggio.enc..."
-	# ...existing code...
+		start_c=$(python3 -c 'import time; print(int(time.time()*1000))')
 		$OPENSSL_BIN enc -"$ALGO" -in "messaggio.txt" -out "$DIR/messaggio.enc" -K "$(cat "$DIR/key.bin")" "${IV_ARG[@]}"
-		echo "File cifrato: $DIR/messaggio.enc"
+		end_c=$(python3 -c 'import time; print(int(time.time()*1000))')
+		tempo_cifratura=$(( end_c - start_c )) # ms
+		echo "$ALGO,cifratura,$tempo_cifratura" >> tempi_algoritmi.csv
+		echo "File cifrato: $DIR/messaggio.enc (Tempo: ${tempo_cifratura}ms)"
 
 		echo "Decifro $DIR/messaggio.enc in $DIR/messaggio_decrypted.txt..."
-	# ...existing code...
+		start_d=$(python3 -c 'import time; print(int(time.time()*1000))')
 		$OPENSSL_BIN enc -d -"$ALGO" -in "$DIR/messaggio.enc" -out "$DIR/messaggio_decrypted.txt" -K "$(cat "$DIR/key.bin")" "${IV_ARG[@]}"
-		echo "File decifrato: $DIR/messaggio_decrypted.txt"
+		end_d=$(python3 -c 'import time; print(int(time.time()*1000))')
+		tempo_decifratura=$(( end_d - start_d )) # ms
+		echo "$ALGO,decifratura,$tempo_decifratura" >> tempi_algoritmi.csv
+		echo "File decifrato: $DIR/messaggio_decrypted.txt (Tempo: ${tempo_decifratura}ms)"
 		echo "---------------------------------------------"
 	done
 }

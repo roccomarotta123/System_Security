@@ -2,6 +2,7 @@ aes/
 des/
 camellia/
 blowfish/
+.DS_Store
 
 legacy_openssl/
 legacy_openssl/**
