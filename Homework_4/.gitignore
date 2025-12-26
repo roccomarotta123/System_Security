@@ -1,0 +1,11 @@
+# Ignore everything by default
+*
+
+# Un-ignore directories so we can traverse them
+!*/
+
+# Specific Allowlist (Un-ignore)
+!Dockerfile
+!docker-compose.yml
+!src/main/resources/application.properties
+!src/main/java/**/*.java

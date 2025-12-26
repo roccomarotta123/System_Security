@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.7
+    container_name: sys-sec-keycloak
+    command: start-dev
+    ports:
+      - "8081:8080"
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8081
+      KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
+      KC_HTTP_ENABLED: "true"
+    volumes:
+      - ./keycloak-data:/opt/keycloak/data/h2
+
+  mysql:
+    image: mysql:8.0
+    container_name: sys-sec-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root_secret
+      MYSQL_DATABASE: homework4_db
+      MYSQL_USER: app_user
+      MYSQL_PASSWORD: app_secret
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  vault:
+    image: hashicorp/vault:latest
+    container_name: sys-sec-vault
+    ports:
+      - "8200:8200"
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_LOCAL_CONFIG: '{"storage": {"file": {"path": "/vault/file"}}, "listener": [{"tcp": { "address": "0.0.0.0:8200", "tls_disable": true}}], "ui": true, "disable_mlock": true, "api_addr": "http://0.0.0.0:8200"}'
+    volumes:
+      - ./vault-data:/vault/file
+    command: server
+
+  secure-app:
+    build: .
+    container_name: sys-sec-app
+    restart: on-failure
+    extra_hosts:
+      - "localhost:host-gateway"
+    ports:
+      - "8443:8443"
+    depends_on:
+      - vault
+      - mysql
+      - keycloak
+    environment:
+      # Network Overrides
+      SPRING_DATASOURCE_URL: jdbc:mysql://sys-sec-mysql:3306/homework4_db
+      SPRING_CLOUD_VAULT_URI: http://sys-sec-vault:8200
+
+      # Split Horizon DNS Strategy (Manual/Stable):
+      # We Connect to "sys-sec-keycloak" internally.
+      # We cannot use "issuer-uri" because Keycloak returns "localhost" (Issuer Mismatch).
+      # So we manually configure the endpoints.
+      # SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI: http://sys-sec-keycloak:8080/realms/Homework4
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATION_URI: http://localhost:8081/realms/Homework4/protocol/openid-connect/auth
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_TOKEN_URI: http://sys-sec-keycloak:8080/realms/Homework4/protocol/openid-connect/token
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_JWK_SET_URI: http://sys-sec-keycloak:8080/realms/Homework4/protocol/openid-connect/certs
+
+      # Adjust Redirect URI for Docker (External access is still localhost:8443)
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_REDIRECT_URI: https://localhost:8443/login/oauth2/code/keycloak
+      # Vault AppRole Credentials
+      VAULT_ROLE_ID: ddd6ea60-9fe1-861f-d690-f347bec9b488
+      VAULT_SECRET_ID: ea6a3382-06dd-b0f8-2b13-6419addfd812
+
+volumes:
+  mysql-data:
