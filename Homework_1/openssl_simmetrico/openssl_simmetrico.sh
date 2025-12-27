@@ -33,9 +33,9 @@ process_family() {
 		DIR="$FAMILY_NAME/$ALGO"
 		mkdir -p "$DIR"
 
-		# Usa sempre messaggio.txt come file di input
-		if [[ ! -f "messaggio.txt" ]]; then
-			echo "File messaggio.txt di default non trovato. Creane uno nella cartella principale."
+		# Usa sempre body.bin e header.bin come input
+		if [[ ! -f "body.bin" || ! -f "header.bin" ]]; then
+			echo "File body.bin o header.bin non trovati. Assicurati che siano nella cartella principale."
 			exit 1
 		fi
 
@@ -80,13 +80,11 @@ process_family() {
 
 			# IV richiesto solo per CBC (non per ECB)
 			if [[ "$ALGO" == des-cbc || "$ALGO" == des-ede3-cbc || "$ALGO" == bf-cbc ]]; then
-	# ...existing code...
-		$OPENSSL_BIN rand -hex 8 > "$DIR/iv.bin"
+				$OPENSSL_BIN rand -hex 8 > "$DIR/iv.bin"
 				IV_ARG=( -iv "$(cat "$DIR/iv.bin")" )
 				echo "Chiave e IV generati in $DIR."
 			elif [[ "$ALGO" == *cbc ]]; then
-	# ...existing code...
-		$OPENSSL_BIN rand -hex 16 > "$DIR/iv.bin"
+				$OPENSSL_BIN rand -hex 16 > "$DIR/iv.bin"
 				IV_ARG=( -iv "$(cat "$DIR/iv.bin")" )
 				echo "Chiave e IV generati in $DIR."
 			else
@@ -94,21 +92,17 @@ process_family() {
 				echo "Chiave generata in $DIR. (IV non richiesto per ECB)"
 			fi
 
-		echo "Cifro messaggio.txt in $DIR/messaggio.enc..."
-		start_c=$(python3 -c 'import time; print(int(time.time()*1000))')
-		$OPENSSL_BIN enc -"$ALGO" -in "messaggio.txt" -out "$DIR/messaggio.enc" -K "$(cat "$DIR/key.bin")" "${IV_ARG[@]}"
-		end_c=$(python3 -c 'import time; print(int(time.time()*1000))')
-		tempo_cifratura=$(( end_c - start_c )) # ms
-		echo "$ALGO,cifratura,$tempo_cifratura" >> tempi_algoritmi.csv
-		echo "File cifrato: $DIR/messaggio.enc (Tempo: ${tempo_cifratura}ms)"
+		echo "Cifro body.bin in $DIR/body.enc..."
+		$OPENSSL_BIN enc -"$ALGO" -in "body.bin" -out "$DIR/body.enc" -K "$(cat "$DIR/key.bin")" "${IV_ARG[@]}"
+		echo "File cifrato: $DIR/body.enc"
 
-		echo "Decifro $DIR/messaggio.enc in $DIR/messaggio_decrypted.txt..."
-		start_d=$(python3 -c 'import time; print(int(time.time()*1000))')
-		$OPENSSL_BIN enc -d -"$ALGO" -in "$DIR/messaggio.enc" -out "$DIR/messaggio_decrypted.txt" -K "$(cat "$DIR/key.bin")" "${IV_ARG[@]}"
-		end_d=$(python3 -c 'import time; print(int(time.time()*1000))')
-		tempo_decifratura=$(( end_d - start_d )) # ms
-		echo "$ALGO,decifratura,$tempo_decifratura" >> tempi_algoritmi.csv
-		echo "File decifrato: $DIR/messaggio_decrypted.txt (Tempo: ${tempo_decifratura}ms)"
+		# Unisco header e body cifrato per creare l'immagine
+		cat header.bin "$DIR/body.enc" > "$DIR/tux_encrypted.bmp"
+		echo "Immagine cifrata creata: $DIR/tux_encrypted.bmp"
+
+		echo "Decifro $DIR/body.enc in $DIR/body_decrypted.bin..."
+		$OPENSSL_BIN enc -d -"$ALGO" -in "$DIR/body.enc" -out "$DIR/body_decrypted.bin" -K "$(cat "$DIR/key.bin")" "${IV_ARG[@]}"
+		echo "File decifrato: $DIR/body_decrypted.bin"
 		echo "---------------------------------------------"
 	done
 }
